@@ -1,0 +1,134 @@
+
+\documentclass[11pt,a4paper]{article}
+\usepackage{url}
+\title{Revision:``PNBsolver: A Domain-Specific Language for Modeling Parallel N-body Problems''}
+\author{Ferosh Jacob, Md Ashfakul Islam, Weihua Geng, \\ Jeff Gray, Susan Vrbsky, Brandon Dixon,\\ and Purushotham Bangalore}
+\begin{document}
+\maketitle
+
+In this document, we explain in detail how we revised the paper addressing the comments and concerns of the reviewer. The five main reviewer comments and the corresponding modifications are described in the following subsections.
+
+
+\section {Analytic results}
+\paragraph{Reviewer description:}``The paper lacks ANALYTIC results. The implementation/simulation validation is not enough to warrant the publication of this paper. The authors should add analytic analysis of the proposed solution.''
+\paragraph{Paper modifications:} We included a detailed analysis of tree code algorithm showing how the efficient implementation of the tree code algorithm can be leverage for N-body problems.   
+The changes made in the paper are listed below. 
+
+\begin{enumerate}
+\item
+We added the following line to the end of \textbf{Section 2. N-body problems and tree code algorithm}.
+
+\textit{In this section, the analytical formulation of tree code algorithm is reviewed, explaining how the efficient implementations of this algorithm can be reused in N-body computations.} 
+
+\item
+Rewrote the second paragraph in \textbf{2.1. Tree code algorithm} as following. 
+
+\textit{
+The tree code algorithm has proved its efficiency for N-body problems [18]. It reduces the computational cost of these problem from $\mathcal{O}(N^2)$ to $\mathcal{O}(N\log(N))$.
+The tree code algorithm is explained in  two perspectives: 
+1) Analytical formulation; and 2) Numerical implimentation.
+In the analytical formulation, the important concepts of multipole expansion, moments as well as the novel recurrence relation idea for computing multi-indexed Taylor expansion are introduced.  Error and computational cost analysis are provided.
+}
+
+\item 
+Included a new subsection, \textbf{2.1.1. Tree code algorithm: analytical formulation} explaining the analytical formulation of tree code algorithm.  The newly added subsection is given below.
+
+{\it
+\textbf{2.1.1. Tree code algorithm: analytical formulation}
+
+In a system consisting of $N$ bodies, 
+the interaction of  body $i$ with other $N-1$ bodies is given in Equation \ref{eqn_inter}.  
+\begin{equation}
+\label{eqn_inter}
+I_i = \sum\limits_{j=1,j\ne i}^{N} M_jG(x_i,y_j)
+\end{equation}
+
+According to the tree code algorithm, 
+for bodies within a cell/cluster (one of the subunits of the 3-D cube) 
+satisfying the maximum acceptance criterion (MAC) [22]  in Equation \ref{eqn_mac} for $\theta < 1$,  
+their interaction with body $i$ can be calculated more efficiently with controllable errors. 
+\begin{equation}
+\label{eqn_mac}
+\frac{r_c}{R}<\theta 
+\end{equation}
+In Equation \ref{eqn_mac}, $r_c$ represents the location of the cell center and $R$ represents the distance between the $i$th body
+and the cell center. On satisfying the MAC, the more efficient particle-cluster interaction between body $i$ and bodies inside the cell $c$ is given  as 
+$I_{i,c}$ in Equation \ref{eqn_tree} from [19, 23, 24]. Here $p$ represents the ORDER of the Taylor expansion. Note that $k$, $x$, and $y$ are 3-D vectors. 
+
+\begin{eqnarray}
+\label{eqn_tree}
+I_{i,c} &\approx& \sum\limits_{||k||=0}^{p} \frac{1}{k!}D^{k}_{x}G(x_i,y_c) \sum\limits_{y_j \in c}M_j{(y_j-y_c)}^k\\
+\label{eqn_tree2}
+&\approx& \sum\limits_{||k||=0}^{p} a^k(G(x_i, y_c))m^k_c
+\end{eqnarray}
+Where $a^k(G(x_i, y_c))=\frac{1}{k!}D^{k}_{x}G(x_i,y_c)$ is the $k$th order Taylor coefficients and $m^k_c
+$ is the $k$th order moment of the cell $c$. 
+
+In Equation \ref{eqn_tree}, for each $k$, the 
+Taylor coefficients need to be computed for every target body using recurrence relations. Recurrence relations are usually kernel-dependent. For example, let $a^0(G(x, y))=1/|x-y|$ be the Coulombic interaction, the higher order Taylor coefficients can be computed recurrently by
+\begin{equation}
+||{k}|| |{ x}-{ y}|^2 a^{ k}-(2||{ k}||-1)
+\sum_{i=1}^3 (x_i-y_i)a^{{ k}-{ e}_i}
++ (||{ k}||-1)\sum_{i=1}^3 a^{{ k}-2{ e}_i} = 0\nonumber 
+\label{recurrence_1} 
+\end{equation}
+where $e_i$'s are standard 3-D unit vectors.  It worths noting that Tausch developed a kernel-independent recurrence relation for wider application of the Cartesian multipole expansion including fast multipole method and tree code [25].   
+
+
+ 
+The moment of the cell, on the contrary, is only evaluated once for each cell, i.e. the moment is a property associated with each cell. 
+%In general, Equation \ref{eqn_tree} can be rewritten as Equation \ref{eqn_tree2}. 
+From an implementation perspective, to 
+implement this algorithm for any interaction, programmers only need to choose one of our included interactions or provide the Taylor coefficients for user-specified interactions. 
+
+Equation \ref{eqn_tree} also reveals the error and computational cost of the tree code. The error is essentially $\mathcal{O}(\theta^{(p+1)})$ due to the Taylor expansion to the order $p$. The total computational cost is $\mathcal{O}(p^3N \log N)$ (a little bit more specified than $\mathcal{O}(N\log N)$), where $p^3$ is from the summation over the magnitude of 3-D vector $k$ from 0 to $p$, $N$ is the number of target particles and $\log N$ is the level of trees. 
+ 
+
+}
+\end{enumerate}
+
+
+\section {DSL implementation effort}
+\paragraph{Reviewer description:} ``Please discuss also the effort to implement PNBSolver. This is an important issue since trade-off between developing a DSL and its later usage should be contrasted with classic GPL approach. How quickly similar DSLs can be developed?''
+\paragraph{Paper modifications:} We added a new subsection \textbf{4.4 PNBsolver Implementation Effort} to explain the implementation and source code details. The newly added subsection is given below. 
+
+{\it
+
+\textbf{4.4 PNBsolver Implementation Effort}
+
+\begin{table}[h]
+\caption{Code analysis of PNBsolver}
+\label{code_cloc_analysis}
+\centering
+
+\begin{tabular}{|l|l|c|c|c|c|} \hline
+Code type & Language &files         & blank        &comment          & code \\\hline
+Generated & Java                           &2           & 868 &           468  &         2572 (87\%) \\\hline
+Manual &Java &                            9&             73 &             4    &        385 (13\%) \\\hline
+\end{tabular}
+\end{table}
+
+The source code for the PNBsolver is publicly available on github\footnote{PNBsolver source code, \url{https://github.com/feroshjacob/PBNsolver}}. After we finalized the design, the core implementation was finished in a weekend. 
+The implementation has 2957 lines of code (estimated by CLOC\footnote{Count Lines of Code (CLOC), \url{http://cloc.sourceforge.net} }) distributed in 11 Java files. The details of the manual and generated code (generated from the 
+grammar using the ANTLR generator tool) is given in the Table 3. As shown in the table, 87\% code was generated and only 385 lines of code was handwritten for implementing the PNBsolver.     
+
+
+
+}
+
+\section {Related work}
+\paragraph{Reviewer description:}``PNBSolver is a tiny DSL. It can be probably replaced with powerful annotation system. For example as described in: Walter Cazzola, Edoardo Vacchi. ~@Java: Bringing a richer annotation model to Java. Computer Languages, Systems \& Structures, Volume 40, Issue 1, April 2014, Pages 2-18. Please discuss pros and cons of such approach in the related work section.''
+\paragraph{Paper modification:} We added  the following line to the subsection, \textbf{7.3. Modeling in parallel programming}.
+
+\textit{
+@Java [49] extends the Java Annotation model and enables programmer to define custom annotations in Java code and such annotations can be evaluated dynamically. PNBsolver differ from @Java because it is not tightly bound to any general purpose language and users only have to familiarize with PNBsolver semantics to use PNBsolver.
+} 
+
+\section {Typo errors}
+\paragraph{Reviewer description:}``Typo on page 16:  PNBSolver to to Li $->$ PNBSolver to Li''
+\paragraph{Paper modification:} We fixed the typo.
+
+\section {Images in the paper}
+\paragraph{Reviewer description:}``Will figures appear in color? Namely, current figures are not very readable on black ink printer.''
+\paragraph{Paper modification:} None, Yes the current figures are in color. We will check with the publisher whether we have to convert once the paper is accepted.
+\end{document}
